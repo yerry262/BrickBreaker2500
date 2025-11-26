@@ -76,14 +76,36 @@ class Game {
 
     resizeCanvas() {
         const container = document.getElementById('game-container');
-        this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        
+        // Set display size (CSS pixels)
+        const displayWidth = container.clientWidth;
+        const displayHeight = container.clientHeight;
+        
+        // Set canvas size in memory (higher resolution for retina displays)
+        this.canvas.width = displayWidth * devicePixelRatio;
+        this.canvas.height = displayHeight * devicePixelRatio;
+        
+        // Scale the canvas back down using CSS
+        this.canvas.style.width = displayWidth + 'px';
+        this.canvas.style.height = displayHeight + 'px';
+        
+        // Scale the drawing context so everything draws at the higher resolution
+        const ctx = this.canvas.getContext('2d');
+        ctx.scale(devicePixelRatio, devicePixelRatio);
         
         if (this.renderer) {
-            this.renderer.resize(this.canvas.width, this.canvas.height);
+            this.renderer.resize(displayWidth, displayHeight);
         }
         if (this.input) {
             this.input.updateTouchZones();
+        }
+        
+        // If we have a paddle, reposition it to ensure it's always visible
+        if (this.paddle) {
+            const paddleOffset = Math.max(50, displayHeight * 0.08);
+            const newPaddleY = displayHeight - paddleOffset;
+            this.paddle.position.y = newPaddleY;
         }
     }
 
@@ -252,8 +274,9 @@ class Game {
         // Generate bricks for this level
         this.bricks = this.levelManager.generateLevel(levelNum, this.canvas.width);
         
-        // Create paddle
-        const paddleY = this.canvas.height - 50;
+        // Create paddle - ensure it's visible on mobile by using percentage of screen height
+        const paddleOffset = Math.max(50, this.canvas.height * 0.08); // At least 50px or 8% of height
+        const paddleY = this.canvas.height - paddleOffset;
         this.paddle = new Paddle(this.canvas.width / 2, paddleY);
         
         // Create ball on paddle
