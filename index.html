@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Bubble Bounce Blitz - A fun, fast-paced 2D browser game where you tap to launch bouncing bubbles upward through moving platforms!">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Bubble Bounce Blitz 🫧</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div id="score">Score: 0</div>
+            <div id="highScore">High: 0</div>
+            <div id="difficulty" class="difficulty-badge"></div>
+        </div>
+        <div id="menu" class="screen">
+            <h1>🫧 Bubble Bounce Blitz 🫧</h1>
+            <p>Tap to Jump! Reach new heights!</p>
+            <div class="platform-legend">
+                <span class="legend-item"><span class="color-dot normal"></span> Normal</span>
+                <span class="legend-item"><span class="color-dot breaking"></span> Breaking</span>
+                <span class="legend-item"><span class="color-dot boost"></span> Boost</span>
+                <span class="legend-item"><span class="color-dot reverse"></span> Reverse</span>
+                <span class="legend-item"><span class="color-dot rainbow"></span> Split!</span>
+            </div>
+            <button id="startBtn">🎮 Start Game</button>
+            <button id="scoresBtn">🏆 High Scores</button>
+        </div>
+        <div id="gameOver" class="screen hidden">
+            <h2>Game Over!</h2>
+            <p id="finalScore">Score: 0</p>
+            <div id="newHighScore" class="hidden">
+                <h3>🎉 New High Score! 🎉</h3>
+                <input type="text" id="nameInput" maxlength="8" placeholder="Name (8 letters)">
+                <button id="submitScore">Submit</button>
+            </div>
+            <button id="playAgain">🔄 Play Again</button>
+            <button id="mainMenu">🏠 Main Menu</button>
+        </div>
+        <div id="highScores" class="screen hidden">
+            <h2>🏆 Top 100 High Scores</h2>
+            <div id="scoresList"></div>
+            <button id="backBtn">← Back</button>
+        </div>
+    </div>
+    
+    <!-- Utility Scripts -->
+    <script src="js/utils/Vector2.js"></script>
+    <script src="js/utils/ObjectPool.js"></script>
+    
+    <!-- Core Scripts -->
+    <script src="js/core/EventBus.js"></script>
+    <script src="js/core/ConfigManager.js"></script>
+    <script src="js/core/EntityManager.js"></script>
+    <script src="js/core/DifficultyManager.js"></script>
+    <script src="js/core/TouchManager.js"></script>
+    <script src="js/core/PerformanceManager.js"></script>
+    
+    <!-- Entity Scripts -->
+    <script src="js/entities/Bubble.js"></script>
+    <script src="js/entities/Platform.js"></script>
+    <script src="js/entities/Particle.js"></script>
+    
+    <!-- System Scripts -->
+    <script src="js/systems/PhysicsSystem.js"></script>
+    <script src="js/systems/CollisionSystem.js"></script>
+    <script src="js/systems/RenderSystem.js"></script>
+    <script src="js/systems/AudioSystem.js"></script>
+    <script src="js/systems/ParticleSystem.js"></script>
+    
+    <!-- Legacy/Existing Scripts -->
+    <script src="js/highscores.js"></script>
+    <script src="js/input.js"></script>
+    
+    <!-- Main Game -->
+    <script src="js/game.js"></script>
+</body>
+</html>
