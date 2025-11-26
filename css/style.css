@@ -65,7 +65,29 @@ body {
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
-#score { color: #ffd700; }
+#score { 
+    color: #ffd700; 
+    pointer-events: auto;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#score.rain-active {
+    animation: rainbowPulse 0.5s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes rainbowPulse {
+    0%, 100% { 
+        color: #ffd700; 
+        transform: scale(1);
+    }
+    50% { 
+        color: #ff6b6b; 
+        transform: scale(1.1);
+    }
+}
+
 #highScore { color: #c0c0c0; }
 #level { color: #4ecdc4; }
 #lives { color: #ff6b6b; }
@@ -127,6 +149,7 @@ body {
     backdrop-filter: blur(10px);
     z-index: 100;
     transition: opacity 0.3s ease, transform 0.3s ease;
+    padding-top: 80px; /* Space for menu bricks at top */
 }
 
 .screen.hidden {
@@ -135,10 +158,14 @@ body {
     transform: scale(0.95);
 }
 
+#menu {
+    padding-top: 85px; /* Extra space for the 3 rows of bricks */
+}
+
 .screen h1 {
     font-size: clamp(1.5em, 6vw, 2.5em);
     margin-bottom: 10px;
-    text-shadow: 0 0 20px rgba(100, 149, 237, 0.8);
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
     animation: titleGlow 2s ease-in-out infinite;
     white-space: nowrap;
     padding: 0 10px;
@@ -147,7 +174,7 @@ body {
 .screen h2 {
     font-size: 2em;
     margin-bottom: 20px;
-    text-shadow: 0 0 15px rgba(100, 149, 237, 0.6);
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
 }
 
 .screen h3 {
@@ -158,13 +185,221 @@ body {
 
 .subtitle {
     font-size: 1.2em;
-    color: #aaa;
+    color: #ffd700;
     margin-bottom: 30px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    animation: subtitlePulse 3s ease-in-out infinite;
+}
+
+@keyframes subtitlePulse {
+    0%, 100% { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+    50% { color: #fff; text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 100, 100, 0.4); }
 }
 
 @keyframes titleGlow {
-    0%, 100% { text-shadow: 0 0 20px rgba(100, 149, 237, 0.8); }
-    50% { text-shadow: 0 0 40px rgba(100, 149, 237, 1), 0 0 60px rgba(100, 149, 237, 0.5); }
+    0%, 100% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 100, 100, 0.5); }
+    50% { text-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 100, 100, 0.8), 0 0 80px rgba(100, 200, 255, 0.4); }
+}
+
+/* Casino Menu Bricks */
+.menu-bricks {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    max-width: 95%;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    row-gap: 6px;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.menu-brick {
+    width: calc((100% - 32px) / 9);
+    max-width: 38px;
+    min-width: 28px;
+    height: 18px;
+    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: filter 0.1s, box-shadow 0.1s, opacity 0.3s, transform 0.3s;
+}
+
+.menu-brick.destroyed {
+    opacity: 0;
+    transform: scale(0.5);
+    pointer-events: none;
+}
+
+.menu-brick.rainbow {
+    background: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff);
+    animation: rainbowShift 1s linear infinite;
+}
+
+.menu-brick.gold {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 30%, #ffd700 50%, #b8860b 100%);
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.6);
+    animation: goldShimmer 2s ease-in-out infinite;
+}
+
+.menu-brick.explosive {
+    background: linear-gradient(135deg, #ff4500 0%, #ff6b35 50%, #ff4500 100%);
+    animation: explosivePulse 0.5s ease-in-out infinite;
+}
+
+.menu-brick.super {
+    background: linear-gradient(135deg, #ff00ff 0%, #00ffff 50%, #ffff00 100%);
+    box-shadow: 0 4px 25px rgba(255, 0, 255, 0.7);
+    animation: superGlow 0.8s ease-in-out infinite;
+}
+
+.menu-brick.power {
+    background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.5);
+    animation: powerPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes brickFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-8px) rotate(-2deg); }
+    50% { transform: translateY(-4px) rotate(0deg); }
+    75% { transform: translateY(-10px) rotate(2deg); }
+}
+
+@keyframes rainbowShift {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes goldShimmer {
+    0%, 100% { box-shadow: 0 4px 20px rgba(255, 215, 0, 0.6); }
+    50% { box-shadow: 0 4px 30px rgba(255, 215, 0, 1), 0 0 15px rgba(255, 255, 255, 0.5); }
+}
+
+@keyframes explosivePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(255, 69, 0, 0.5); }
+    50% { transform: scale(1.08); box-shadow: 0 6px 25px rgba(255, 69, 0, 0.9); }
+}
+
+@keyframes superGlow {
+    0%, 100% { box-shadow: 0 4px 25px rgba(255, 0, 255, 0.7); }
+    50% { box-shadow: 0 4px 35px rgba(0, 255, 255, 1), 0 0 50px rgba(255, 255, 0, 0.5); }
+}
+
+@keyframes powerPulse {
+    0%, 100% { box-shadow: 0 4px 15px rgba(78, 205, 196, 0.5); }
+    50% { box-shadow: 0 4px 25px rgba(78, 205, 196, 0.9), 0 0 20px rgba(78, 205, 196, 0.4); }
+}
+
+/* Brick hit effect when demo ball collides */
+.menu-brick.brick-hit {
+    animation: brickHitFlash 0.2s ease-out !important;
+    filter: brightness(1.5) !important;
+}
+
+@keyframes brickHitFlash {
+    0% { transform: scale(1.2); filter: brightness(2); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Demo ball styling handled by JS, but add trail effect */
+.demo-ball::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    border-radius: 50%;
+    opacity: 0.3;
+    transform: scale(0.8);
+    filter: blur(2px);
+}
+
+/* Sparkle Effects */
+.sparkle-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.sparkle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: radial-gradient(circle, #fff 0%, rgba(255, 215, 0, 0.8) 40%, transparent 70%);
+    border-radius: 50%;
+    animation: sparkleFloat 3s ease-in-out infinite;
+}
+
+.sparkle:nth-child(1) { left: 8%; top: 15%; animation-delay: 0s; width: 8px; height: 8px; }
+.sparkle:nth-child(2) { left: 92%; top: 25%; animation-delay: 0.5s; }
+.sparkle:nth-child(3) { left: 15%; top: 55%; animation-delay: 1s; width: 10px; height: 10px; }
+.sparkle:nth-child(4) { left: 85%; top: 65%; animation-delay: 1.5s; }
+.sparkle:nth-child(5) { left: 50%; top: 8%; animation-delay: 2s; width: 7px; height: 7px; }
+.sparkle:nth-child(6) { left: 25%; top: 35%; animation-delay: 0.3s; }
+.sparkle:nth-child(7) { left: 75%; top: 45%; animation-delay: 0.8s; width: 9px; height: 9px; }
+.sparkle:nth-child(8) { left: 40%; top: 75%; animation-delay: 1.3s; }
+
+@keyframes sparkleFloat {
+    0%, 100% { 
+        opacity: 0;
+        transform: scale(0) translateY(0) rotate(0deg);
+    }
+    10% {
+        opacity: 1;
+        transform: scale(1.2) translateY(-5px) rotate(45deg);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1) translateY(-15px) rotate(90deg);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.3) translateY(-25px) rotate(180deg);
+    }
+    70% {
+        opacity: 0.6;
+        transform: scale(0.9) translateY(-35px) rotate(270deg);
+    }
+    90% {
+        opacity: 0.2;
+        transform: scale(0.5) translateY(-45px) rotate(360deg);
+    }
+}
+
+/* Button Glow Effect */
+.btn-glow {
+    animation: buttonGlow 2s ease-in-out infinite;
+}
+
+@keyframes buttonGlow {
+    0%, 100% { 
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.4);
+    }
+    50% { 
+        box-shadow: 0 5px 30px rgba(78, 205, 196, 0.8), 0 0 40px rgba(78, 205, 196, 0.4);
+    }
+}
+
+.btn-secondary.btn-glow {
+    animation: buttonGlowSecondary 2s ease-in-out infinite;
+}
+
+@keyframes buttonGlowSecondary {
+    0%, 100% { 
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    50% { 
+        box-shadow: 0 5px 30px rgba(102, 126, 234, 0.8), 0 0 40px rgba(255, 215, 0, 0.3);
+    }
 }
 
 /* Buttons */

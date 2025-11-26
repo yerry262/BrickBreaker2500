@@ -57,6 +57,14 @@ class Game {
         this.partyModeTimer = 0;
         this.partyModeDuration = 10; // 10 seconds
         this.partyModeHue = 0;
+        this.partyModeAnimationPattern = 0; // Current animation pattern (0-17)
+        this.partyModeAnimationTime = 0; // Animation time tracker
+        
+        // Easter egg: Power-up rain cheat
+        this.powerUpRainActive = false;
+        this.powerUpRainInterval = null;
+        this.scoreHoldStart = 0;
+        this.scoreHoldTimer = null;
 
         // Timing
         this.lastTime = 0;
@@ -66,6 +74,11 @@ class Game {
         // Setup
         this.setupUI();
         this.updateHighScoreDisplay(); // Don't await to avoid blocking constructor
+
+        // Start menu animations
+        if (window.menuAnimations) {
+            window.menuAnimations.init();
+        }
 
         // Start game loop
         requestAnimationFrame((t) => this.gameLoop(t));
@@ -186,6 +199,41 @@ class Game {
                 this.submitHighScore();
             }
         });
+        
+        // Easter egg: Hold score for 3 seconds to activate power-up rain
+        const scoreElement = document.getElementById('score');
+        
+        const startScoreHold = (e) => {
+            if (this.state !== GameStates.PLAYING) return;
+            e.preventDefault();
+            
+            this.scoreHoldStart = Date.now();
+            this.scoreHoldTimer = setTimeout(() => {
+                this.activatePowerUpRain();
+            }, 3000);
+        };
+        
+        const endScoreHold = () => {
+            if (this.scoreHoldTimer) {
+                clearTimeout(this.scoreHoldTimer);
+                this.scoreHoldTimer = null;
+            }
+            this.deactivatePowerUpRain();
+        };
+        
+        // Mouse events
+        scoreElement.addEventListener('mousedown', startScoreHold);
+        scoreElement.addEventListener('mouseup', endScoreHold);
+        scoreElement.addEventListener('mouseleave', endScoreHold);
+        
+        // Touch events
+        scoreElement.addEventListener('touchstart', startScoreHold, { passive: false });
+        scoreElement.addEventListener('touchend', endScoreHold);
+        scoreElement.addEventListener('touchcancel', endScoreHold);
+        
+        // Make score element look clickable during gameplay
+        scoreElement.style.cursor = 'pointer';
+        scoreElement.style.userSelect = 'none';
     }
 
     setState(newState) {
@@ -194,6 +242,15 @@ class Game {
         // Refresh scores when entering main menu (but don't wait for it)
         if (newState === GameStates.MENU) {
             this.refreshHighScores();
+            // Start menu animations
+            if (window.menuAnimations) {
+                window.menuAnimations.restart();
+            }
+        } else {
+            // Stop menu animations when leaving menu
+            if (window.menuAnimations) {
+                window.menuAnimations.stop();
+            }
         }
         
         // Handle music for menu states (only if audio is initialized)
@@ -272,6 +329,11 @@ class Game {
     }
 
     startGame() {
+        // Stop menu animations when starting game
+        if (window.menuAnimations) {
+            window.menuAnimations.stop();
+        }
+        
         this.level = 1;
         this.lives = 3;
         this.gameTime = 0;
@@ -289,6 +351,11 @@ class Game {
     loadLevel(levelNum) {
         this.level = levelNum;
         this.levelTime = 0;
+        
+        // Reset party mode when loading new level
+        this.partyModeActive = false;
+        this.partyModeTimer = 0;
+        this.partyModeAnimationTime = 0;
         
         // Generate bricks for this level - pass both width and height for proportional scaling
         this.bricks = this.levelManager.generateLevel(levelNum, this.canvas.width, this.canvas.height);
@@ -364,6 +431,8 @@ class Game {
     }
 
     quitToMenu() {
+        // Stop power-up rain cheat if active
+        this.deactivatePowerUpRain();
         // Music continues - setState will keep it playing for menu
         this.setState(GameStates.MENU);
     }
@@ -376,6 +445,9 @@ class Game {
         // Reset party mode
         this.partyModeActive = false;
         this.partyModeTimer = 0;
+        
+        // Stop power-up rain cheat if active
+        this.deactivatePowerUpRain();
         
         // Flash screen red
         this.renderer.flashScreen('#ff0000', 0.3);
@@ -510,14 +582,20 @@ class Game {
         this.gameTime += dt;
         this.levelTime += dt;
         
-        // Update party mode timer
+        // Update party mode timer and brick animations
         if (this.partyModeActive) {
             this.partyModeTimer -= dt;
             this.partyModeHue = (this.partyModeHue + 200 * dt) % 360;
+            this.partyModeAnimationTime += dt;
+            
+            // Apply animation offsets to non-metal bricks
+            this.updatePartyModeBrickAnimations();
             
             if (this.partyModeTimer <= 0) {
                 this.partyModeActive = false;
                 this.partyModeTimer = 0;
+                // Reset brick animation offsets
+                this.resetBrickAnimationOffsets();
                 // Stop super music and resume normal gameplay music
                 this.audio.stopSuperMusic(true);
             }
@@ -997,6 +1075,13 @@ class Game {
         this.partyModeActive = true;
         this.partyModeTimer = this.partyModeDuration;
         this.partyModeHue = 0;
+        this.partyModeAnimationTime = 0;
+        
+        // Pick a random animation pattern (0-17)
+        this.partyModeAnimationPattern = Math.floor(Math.random() * 18);
+        
+        // Store original brick positions for animation
+        this.storeBrickOriginalPositions();
         
         // Flash screen rainbow
         this.renderer.flashScreen('#ffd700', 0.5);
@@ -1025,6 +1110,244 @@ class Game {
                 );
             }
         }
+    }
+    
+    /**
+     * Store original brick positions before party mode animation
+     */
+    storeBrickOriginalPositions() {
+        for (const brick of this.bricks) {
+            if (!brick.originalX) {
+                brick.originalX = brick.x;
+                brick.originalY = brick.y;
+            }
+        }
+    }
+    
+    /**
+     * Reset brick animation offsets after party mode ends
+     */
+    resetBrickAnimationOffsets() {
+        for (const brick of this.bricks) {
+            if (brick.originalX !== undefined) {
+                brick.x = brick.originalX;
+                brick.y = brick.originalY;
+            }
+            brick.partyAnimOffset = { x: 0, y: 0 };
+        }
+    }
+    
+    /**
+     * Update party mode brick animations based on current pattern
+     */
+    updatePartyModeBrickAnimations() {
+        const time = this.partyModeAnimationTime;
+        const nonMetalBricks = this.bricks.filter(b => !b.destroyed && b.type !== BrickTypes.METAL);
+        const total = nonMetalBricks.length;
+        
+        // Get the number of columns in the level (usually 8)
+        const cols = this.levelManager.brickCols;
+        
+        nonMetalBricks.forEach((brick, index) => {
+            // Calculate row and col based on original position
+            const row = Math.floor(index / cols);
+            const col = index % cols;
+            
+            // Get animation offset based on current pattern
+            const offset = this.getPartyAnimationOffset(index, total, row, col, time, cols);
+            
+            // Store the animation offset
+            brick.partyAnimOffset = offset;
+            
+            // Apply offset to brick position (from original)
+            if (brick.originalX !== undefined) {
+                brick.x = brick.originalX + offset.x;
+                brick.y = brick.originalY + offset.y;
+            }
+        });
+    }
+    
+    /**
+     * Get animation offset for a brick based on the current party mode pattern
+     */
+    getPartyAnimationOffset(index, total, row, col, time, cols) {
+        const pattern = this.partyModeAnimationPattern;
+        let x = 0, y = 0;
+        
+        switch (pattern) {
+            case 0: // Sine wave
+                y = Math.sin(time * 3 + index * 0.5) * 12;
+                break;
+                
+            case 1: // Cosine wave with horizontal
+                x = Math.cos(time * 2 + index * 0.3) * 8;
+                y = Math.sin(time * 2.5 + index * 0.4) * 10;
+                break;
+                
+            case 2: // Alternating sine
+                const direction = index % 2 === 0 ? 1 : -1;
+                y = Math.sin(time * 3) * 15 * direction;
+                break;
+                
+            case 3: // Row wave
+                y = Math.sin(time * 2.5 + row * 1.2) * 12;
+                x = Math.cos(time * 2 + row * 0.8) * 5;
+                break;
+                
+            case 4: // Column wave
+                y = Math.sin(time * 2 + col * 0.7) * 15;
+                break;
+                
+            case 5: // Diagonal wave
+                const diagonal = row + col;
+                y = Math.sin(time * 2.5 + diagonal * 0.4) * 12;
+                break;
+                
+            case 6: // Circular motion
+                const phase = index * 0.4;
+                x = Math.cos(time * 2 + phase) * 6;
+                y = Math.sin(time * 2 + phase) * 6;
+                break;
+                
+            case 7: // Breathe
+                const scale = Math.sin(time * 1.5) * 5;
+                y = -scale;
+                break;
+                
+            case 8: // Cascade
+                const delay = col * 0.3;
+                y = Math.sin(time * 4 - delay) * 10;
+                break;
+                
+            case 9: // Mexican wave
+                const position = index / total;
+                const wavePos = (time * 0.5) % 1;
+                const dist = Math.abs(position - wavePos);
+                const wave = dist < 0.15 ? Math.sin((1 - dist / 0.15) * Math.PI) : 0;
+                y = -wave * 20;
+                break;
+                
+            case 10: // Bounce
+                const bouncePhase = index * 0.2;
+                const bounce = Math.abs(Math.sin(time * 4 + bouncePhase));
+                y = -bounce * 15;
+                break;
+                
+            case 11: // Zigzag
+                const rowDir = row % 2 === 0 ? 1 : -1;
+                x = Math.sin(time * 3) * 10 * rowDir;
+                y = Math.cos(time * 2 + index * 0.1) * 5;
+                break;
+                
+            case 12: // Pulse from center
+                const centerRow = 2;
+                const centerCol = cols / 2;
+                const distFromCenter = Math.sqrt(Math.pow(row - centerRow, 2) + Math.pow(col - centerCol, 2));
+                const pulseWave = Math.sin(time * 3 - distFromCenter * 0.8) * 10;
+                y = pulseWave;
+                break;
+                
+            case 13: // Spiral
+                const angle = time * 2 + (row * cols + col) * 0.2;
+                const radius = 5 + Math.sin(time) * 3;
+                x = Math.cos(angle) * radius;
+                y = Math.sin(angle) * radius;
+                break;
+                
+            case 14: // Random jitter
+                const seed = Math.sin(time * 10 + index * 100) * 10000;
+                x = (seed % 10) - 5;
+                y = ((seed * 1.5) % 10) - 5;
+                break;
+                
+            case 15: // Heartbeat
+                const beat = Math.sin(time * 6);
+                const heartScale = beat > 0.7 ? 3 : (beat > 0.5 ? 2 : 0);
+                y = -heartScale;
+                break;
+                
+            case 16: // Pendulum
+                const pendulumCenter = cols / 2;
+                const distFromPendulum = col - pendulumCenter;
+                const swing = Math.sin(time * 2) * distFromPendulum * 3;
+                x = swing;
+                y = Math.abs(swing) * 0.5;
+                break;
+                
+            case 17: // Ripple
+                const rippleDist = Math.sqrt(Math.pow(row - 1, 2) + Math.pow(col - cols/2, 2));
+                const rippleWave = Math.sin(time * 4 - rippleDist * 1.5);
+                y = rippleWave * 8;
+                break;
+        }
+        
+        return { x, y };
+    }
+    
+    /**
+     * Easter egg: Activate power-up rain cheat
+     */
+    activatePowerUpRain() {
+        if (this.powerUpRainActive) return;
+        
+        this.powerUpRainActive = true;
+        
+        // Add visual indicator
+        document.getElementById('score').classList.add('rain-active');
+        
+        // Play a fun sound
+        this.audio.playExtraLife();
+        
+        // Flash screen gold
+        this.renderer.flashScreen('#ffd700', 0.3);
+        
+        // Start spawning power-ups every second
+        this.powerUpRainInterval = setInterval(() => {
+            if (this.state !== GameStates.PLAYING || !this.powerUpRainActive) {
+                this.deactivatePowerUpRain();
+                return;
+            }
+            
+            this.spawnRandomPowerUp();
+        }, 1000);
+        
+        // Spawn one immediately
+        this.spawnRandomPowerUp();
+    }
+    
+    /**
+     * Easter egg: Deactivate power-up rain cheat
+     */
+    deactivatePowerUpRain() {
+        if (!this.powerUpRainActive) return;
+        
+        this.powerUpRainActive = false;
+        
+        // Remove visual indicator
+        document.getElementById('score').classList.remove('rain-active');
+        
+        if (this.powerUpRainInterval) {
+            clearInterval(this.powerUpRainInterval);
+            this.powerUpRainInterval = null;
+        }
+    }
+    
+    /**
+     * Spawn a random power-up at the top center of the screen
+     */
+    spawnRandomPowerUp() {
+        // Get all available power-up types
+        const powerUpTypes = Object.values(PowerUpTypes);
+        const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+        
+        // Spawn at top center with some random horizontal offset
+        const x = this.canvas.width / 2 + (Math.random() - 0.5) * 100;
+        const y = 50;
+        
+        this.powerUpManager.spawn(x, y, randomType);
+        
+        // Play a spawn sound
+        this.audio.playPowerUp();
     }
 
     updateLasers(dt) {

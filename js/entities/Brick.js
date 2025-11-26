@@ -123,6 +123,9 @@ class Brick {
         this.originalX = x;
         this.originalY = y;
         
+        // Party mode animation offset
+        this.partyAnimOffset = { x: 0, y: 0 };
+        
         // Mirror brick properties
         this.isClone = false;
         this.originalBrick = null; // Reference to original for clones
