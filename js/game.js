@@ -62,10 +62,6 @@ class Game {
         this.lastTime = 0;
         this.accumulator = 0;
         this.fixedTimeStep = 1 / 60;
-        
-        // Party mode vibration state
-        this.nextVibrationTime = 0;
-        this.isIPhone = this.detectiPhone();
 
         // Setup
         this.setupUI();
@@ -101,23 +97,6 @@ class Game {
             const paddleOffset = Math.max(50, this.canvas.height * 0.08);
             const newPaddleY = this.canvas.height - paddleOffset;
             this.paddle.position.y = newPaddleY;
-        }
-    }
-
-    /**
-     * Detect if device is an iPhone
-     */
-    detectiPhone() {
-        return /iPhone/i.test(navigator.userAgent) || 
-               (/iPad/i.test(navigator.userAgent) && 'ontouchend' in document);
-    }
-
-    /**
-     * Trigger device vibration if supported and on iPhone
-     */
-    triggerVibration(pattern = [100]) {
-        if (this.isIPhone && navigator.vibrate) {
-            navigator.vibrate(pattern);
         }
     }
 
@@ -535,25 +514,6 @@ class Game {
         if (this.partyModeActive) {
             this.partyModeTimer -= dt;
             this.partyModeHue = (this.partyModeHue + 200 * dt) % 360;
-            
-            // Random vibration pulses during party mode (iPhone only)
-            this.nextVibrationTime -= dt;
-            if (this.nextVibrationTime <= 0) {
-                // Random vibration patterns every 0.3-1.2 seconds
-                this.nextVibrationTime = 0.3 + Math.random() * 0.9;
-                
-                // Different vibration patterns
-                const patterns = [
-                    [50],           // Quick pulse
-                    [100],          // Medium pulse
-                    [50, 30, 50],   // Double tap
-                    [30, 20, 30, 20, 80], // Rapid burst
-                    [150],          // Strong pulse
-                ];
-                
-                const randomPattern = patterns[Math.floor(Math.random() * patterns.length)];
-                this.triggerVibration(randomPattern);
-            }
             
             if (this.partyModeTimer <= 0) {
                 this.partyModeActive = false;
@@ -1037,7 +997,6 @@ class Game {
         this.partyModeActive = true;
         this.partyModeTimer = this.partyModeDuration;
         this.partyModeHue = 0;
-        this.nextVibrationTime = 0; // Reset vibration timer
         
         // Flash screen rainbow
         this.renderer.flashScreen('#ffd700', 0.5);
@@ -1045,9 +1004,6 @@ class Game {
         
         // Play special sound and start super music!
         this.audio.playExtraLife();
-        
-        // Initial strong vibration burst for party mode start
-        this.triggerVibration([200, 50, 200, 50, 300]);
         
         // Start the exciting star power music (like Mario Kart)
         if (this.balls.some(b => b.launched)) {
