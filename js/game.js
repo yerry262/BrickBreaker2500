@@ -143,12 +143,7 @@ class Game {
         // High scores back button
         document.getElementById('backBtn').addEventListener('click', () => {
             this.audio.playButtonClick();
-            // Return to game over if we came from there, otherwise menu
-            if (this.state === GameStates.HIGH_SCORES && this.scoreManager.score > 0 && this.lives <= 0) {
-                this.setState(GameStates.GAME_OVER);
-            } else {
-                this.setState(GameStates.MENU);
-            }
+            this.setState(GameStates.MENU);
         });
 
         // Enable/disable submit button based on name input
