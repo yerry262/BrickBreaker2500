@@ -65,7 +65,7 @@ class Game {
 
         // Setup
         this.setupUI();
-        this.updateHighScoreDisplay();
+        this.updateHighScoreDisplay(); // Don't await to avoid blocking constructor
 
         // Start game loop
         requestAnimationFrame((t) => this.gameLoop(t));
@@ -162,6 +162,12 @@ class Game {
 
     setState(newState) {
         this.state = newState;
+        
+        // Refresh scores when entering main menu (but don't wait for it)
+        if (newState === GameStates.MENU) {
+            this.refreshHighScores();
+        }
+        
         this.updateUI();
     }
 
@@ -185,24 +191,43 @@ class Game {
                 break;
             case GameStates.HIGH_SCORES:
                 document.getElementById('highScores').classList.remove('hidden');
-                this.highScoreManager.displayScores('scoresList');
+                // Don't auto-display scores here - they're displayed in showHighScores()
                 break;
         }
     }
 
-    updateHUD() {
+    async updateHUD() {
         document.getElementById('score').textContent = 'Score: ' + this.scoreManager.score.toLocaleString();
-        document.getElementById('highScore').textContent = 'High: ' + this.highScoreManager.getHighScore().toLocaleString();
+        const highScore = await this.highScoreManager.getHighScore();
+        document.getElementById('highScore').textContent = 'High: ' + highScore.toLocaleString();
         document.getElementById('level').textContent = 'Level: ' + this.level;
         document.getElementById('lives').textContent = 'Lives: ' + this.lives;
     }
 
-    updateHighScoreDisplay() {
-        document.getElementById('highScore').textContent = 'High: ' + this.highScoreManager.getHighScore().toLocaleString();
+    async updateHighScoreDisplay() {
+        const highScore = await this.highScoreManager.getHighScore();
+        document.getElementById('highScore').textContent = 'High: ' + highScore.toLocaleString();
+    }
+
+    /**
+     * Refresh high scores from Firebase (non-blocking)
+     */
+    refreshHighScores() {
+        // Fire and forget - don't await to avoid blocking UI
+        this.highScoreManager.refreshScores().then(() => {
+            // Update the high score display after refresh
+            this.updateHighScoreDisplay();
+        }).catch(error => {
+            console.warn('Failed to refresh scores:', error);
+        });
     }
 
     showHighScores() {
         this.setState(GameStates.HIGH_SCORES);
+        // Force refresh when viewing leaderboard
+        setTimeout(() => {
+            this.highScoreManager.displayScores('scoresList', true);
+        }, 100);
     }
 
     startGame() {
@@ -212,6 +237,9 @@ class Game {
         this.scoreManager.reset();
         this.levelManager.reset();
         this.powerUpManager.clear();
+        
+        // Refresh high score at game start
+        this.refreshHighScores();
         
         this.loadLevel(this.level);
         this.setState(GameStates.PLAYING);
@@ -277,7 +305,7 @@ class Game {
         this.setState(GameStates.MENU);
     }
 
-    loseLife() {
+    async loseLife() {
         this.lives--;
         this.audio.playLifeLost();
         
@@ -285,7 +313,7 @@ class Game {
         this.renderer.flashScreen('#ff0000', 0.3);
         
         if (this.lives <= 0) {
-            this.gameOver();
+            await this.gameOver();
         } else {
             // Reset ball position
             this.balls = [];
@@ -295,10 +323,10 @@ class Game {
             this.paddle.reset(this.canvas.width / 2, this.paddle.position.y);
         }
         
-        this.updateHUD();
+        await this.updateHUD();
     }
 
-    gameOver() {
+    async gameOver() {
         this.audio.playGameOver();
         this.setState(GameStates.GAME_OVER);
         
@@ -313,12 +341,20 @@ class Game {
         nameInput.disabled = false;
         nameInput.value = '';
         
-        // Check for high score
-        if (this.highScoreManager.isHighScore(this.scoreManager.score)) {
+        // Check for high score (async)
+        try {
+            const isHighScore = await this.highScoreManager.isHighScore(this.scoreManager.score);
+            if (isHighScore) {
+                document.getElementById('newHighScore').classList.remove('hidden');
+                nameInput.focus();
+            } else {
+                document.getElementById('newHighScore').classList.add('hidden');
+            }
+        } catch (error) {
+            console.warn('Failed to check high score status:', error);
+            // Show input anyway on error
             document.getElementById('newHighScore').classList.remove('hidden');
             nameInput.focus();
-        } else {
-            document.getElementById('newHighScore').classList.add('hidden');
         }
     }
 
@@ -342,7 +378,7 @@ class Game {
         this.updateHUD();
     }
 
-    submitHighScore() {
+    async submitHighScore() {
         const nameInput = document.getElementById('nameInput');
         const submitBtn = document.getElementById('submitScore');
         const name = nameInput.value.trim() || 'PLAYER';
@@ -350,20 +386,30 @@ class Game {
         // Prevent double submission
         if (submitBtn.disabled && nameInput.value.trim().length > 0) return;
         
-        this.highScoreManager.addScore(name, this.scoreManager.score, this.level);
-        this.updateHighScoreDisplay();
-        
-        // Disable submit button and input after submission
+        // Show submitting state
+        submitBtn.textContent = 'Submitting...';
         submitBtn.disabled = true;
-        nameInput.disabled = true;
-        submitBtn.textContent = 'Submitted!';
         
-        document.getElementById('newHighScore').classList.add('hidden');
-        
-        // Take them to the leaderboard after a brief delay
-        setTimeout(() => {
-            this.showHighScores();
-        }, 300);
+        try {
+            await this.highScoreManager.addScore(name, this.scoreManager.score, this.level);
+            await this.updateHighScoreDisplay();
+            
+            // Success state
+            nameInput.disabled = true;
+            submitBtn.textContent = 'Submitted! ✅';
+            
+            document.getElementById('newHighScore').classList.add('hidden');
+            
+            // Take them to the leaderboard after a brief delay
+            setTimeout(() => {
+                this.showHighScores();
+            }, 500);
+        } catch (error) {
+            console.error('Failed to submit high score:', error);
+            // Error state
+            submitBtn.textContent = 'Failed - Try Again';
+            submitBtn.disabled = false;
+        }
     }
 
     // ==================== GAME LOGIC ====================
@@ -564,7 +610,7 @@ class Game {
                 
                 // If no balls left, lose a life
                 if (this.balls.length === 0) {
-                    this.loseLife();
+                    this.loseLife(); // Fire and forget - don't await to keep game loop smooth
                 }
             }
         }

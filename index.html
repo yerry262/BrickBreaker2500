@@ -62,7 +62,33 @@
         </div>
     </div>
     
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB1UhH82_J-EQZ6l_szcNqYyNbb8x_RKN8",
+            authDomain: "brickbreaker2500-leaderboard.firebaseapp.com",
+            projectId: "brickbreaker2500-leaderboard",
+            storageBucket: "brickbreaker2500-leaderboard.firebasestorage.app",
+            messagingSenderId: "318999129640",
+            appId: "1:318999129640:web:7090aa0b2801133fc70f1d"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Make Firebase available globally
+        window.firebaseApp = app;
+        window.firebaseDb = db;
+    </script>
+    
     <!-- Load scripts in order -->
+    <script src="js/firebase.js"></script>
     <script src="js/utils/Vector2.js"></script>
     <script src="js/utils/ObjectPool.js"></script>
     <script src="js/entities/Ball.js"></script>
