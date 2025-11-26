@@ -178,8 +178,20 @@ class LevelManager {
     getLevelPattern(level) {
         // Predefined patterns for first 10 levels, then procedural generation
         const patterns = {
-            // Level 1: Simple intro
             1: [
+                [1,1,1,1,1,1,1,1],
+                [2,2,2,2,2,2,2,2],
+                [3,3,3,3,3,3,3,3],
+                [4,4,4,4,4,4,4,4],
+                [5,5,5,5,5,5,5,5],
+                [6,6,6,6,6,6,6,6],
+                [7,7,7,7,7,7,7,7],
+                [8,8,8,8,8,8,8,8],
+                [9,9,9,9,9,9,9,9],
+                [10,10,10,10,10,10,10,10]
+            ],
+            // Level 1: Simple intro
+            11: [
                 [1,0,1,0,0,1,0,1],
                 [1,0,1,0,0,1,0,1],
                 [7,7,7,10,10,7,7,7],
