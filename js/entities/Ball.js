@@ -2,22 +2,25 @@
  * Ball - The bouncing ball entity that breaks bricks
  */
 class Ball {
-    constructor(x, y, radius = 8, level = 1) {
+    constructor(x, y, radius = 8, level = 1, speedScale = 1) {
         this.position = new Vector2(x, y);
         this.velocity = new Vector2(0, 0);
         this.radius = radius;
+        this.speedScale = speedScale; // Scale speed based on screen size
         
-        // Set base speed based on level
+        // Set base speed based on level, then scale for screen size
+        let baseSpeedValue;
         if (level <= 5) {
-            this.baseSpeed = 6;
+            baseSpeedValue = 6;
         } else if (level <= 10) {
-            this.baseSpeed = 8;
+            baseSpeedValue = 8;
         } else {
-            this.baseSpeed = 10;
+            baseSpeedValue = 10;
         }
         
+        this.baseSpeed = baseSpeedValue * speedScale;
         this.speed = this.baseSpeed;
-        this.maxSpeed = 12;
+        this.maxSpeed = 12 * speedScale;
         this.launched = false;
         this.trail = [];
         this.maxTrailLength = 10;

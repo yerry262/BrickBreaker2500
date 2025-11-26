@@ -82,6 +82,36 @@ class HighScoreManager {
     }
 
     /**
+     * Get the predicted rank for a score (before submission)
+     */
+    async getPredictedRank(score) {
+        if (score <= 0) return -1;
+
+        try {
+            // Try Firebase first
+            if (window.firebaseService && window.firebaseService.isAvailable()) {
+                const scores = await this.getTopScores(100);
+                let rank = 1;
+                for (const entry of scores) {
+                    if (score > entry.score) break;
+                    rank++;
+                }
+                return Math.min(rank, 100);
+            }
+        } catch (error) {
+            console.warn('Failed to get Firebase rank, using local:', error);
+        }
+
+        // Fallback to local
+        let rank = 1;
+        for (const entry of this.localScores) {
+            if (score > entry.score) break;
+            rank++;
+        }
+        return Math.min(rank, this.localScores.length + 1);
+    }
+
+    /**
      * Add a new high score
      */
     async addScore(name, score, level = 1) {

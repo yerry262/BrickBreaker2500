@@ -76,26 +76,17 @@ class Game {
 
     resizeCanvas() {
         const container = document.getElementById('game-container');
-        const devicePixelRatio = window.devicePixelRatio || 1;
         
-        // Set display size (CSS pixels)
-        const displayWidth = container.clientWidth;
-        const displayHeight = container.clientHeight;
+        // Simply match canvas to container size
+        this.canvas.width = container.clientWidth;
+        this.canvas.height = container.clientHeight;
         
-        // Set canvas size in memory (higher resolution for retina displays)
-        this.canvas.width = displayWidth * devicePixelRatio;
-        this.canvas.height = displayHeight * devicePixelRatio;
-        
-        // Scale the canvas back down using CSS
-        this.canvas.style.width = displayWidth + 'px';
-        this.canvas.style.height = displayHeight + 'px';
-        
-        // Scale the drawing context so everything draws at the higher resolution
-        const ctx = this.canvas.getContext('2d');
-        ctx.scale(devicePixelRatio, devicePixelRatio);
+        // Remove any CSS sizing that might conflict
+        this.canvas.style.width = '';
+        this.canvas.style.height = '';
         
         if (this.renderer) {
-            this.renderer.resize(displayWidth, displayHeight);
+            this.renderer.resize(this.canvas.width, this.canvas.height);
         }
         if (this.input) {
             this.input.updateTouchZones();
@@ -103,22 +94,37 @@ class Game {
         
         // If we have a paddle, reposition it to ensure it's always visible
         if (this.paddle) {
-            const paddleOffset = Math.max(50, displayHeight * 0.08);
-            const newPaddleY = displayHeight - paddleOffset;
+            const paddleOffset = Math.max(50, this.canvas.height * 0.08);
+            const newPaddleY = this.canvas.height - paddleOffset;
             this.paddle.position.y = newPaddleY;
         }
     }
 
     setupUI() {
+        // One-time handler to init audio and start menu music on first tap/click
+        const initAudioOnFirstInteraction = () => {
+            if (!this.audio.initialized) {
+                this.audio.init();
+                // Start menu music immediately after init if on menu
+                if (this.state === GameStates.MENU || this.state === GameStates.HIGH_SCORES) {
+                    this.audio.startMusic();
+                }
+            }
+            // Remove listeners after first interaction
+            document.removeEventListener('click', initAudioOnFirstInteraction);
+            document.removeEventListener('touchstart', initAudioOnFirstInteraction);
+        };
+        
+        document.addEventListener('click', initAudioOnFirstInteraction);
+        document.addEventListener('touchstart', initAudioOnFirstInteraction);
+
         // Menu buttons
         document.getElementById('startBtn').addEventListener('click', () => {
-            this.audio.init();
             this.audio.playButtonClick();
             this.startGame();
         });
 
         document.getElementById('scoresBtn').addEventListener('click', () => {
-            this.audio.init();
             this.audio.playButtonClick();
             this.showHighScores();
         });
@@ -188,6 +194,19 @@ class Game {
         // Refresh scores when entering main menu (but don't wait for it)
         if (newState === GameStates.MENU) {
             this.refreshHighScores();
+        }
+        
+        // Handle music for menu states (only if audio is initialized)
+        if (this.audio.initialized) {
+            if (newState === GameStates.MENU || newState === GameStates.HIGH_SCORES) {
+                // Start menu music if not already playing
+                if (!this.audio.isMusicPlaying()) {
+                    this.audio.startMusic();
+                }
+            } else if (newState === GameStates.PLAYING) {
+                // Stop music when starting to play (will restart when ball is launched)
+                this.audio.stopMusic();
+            }
         }
         
         this.updateUI();
@@ -271,13 +290,24 @@ class Game {
         this.level = levelNum;
         this.levelTime = 0;
         
-        // Generate bricks for this level
-        this.bricks = this.levelManager.generateLevel(levelNum, this.canvas.width);
+        // Generate bricks for this level - pass both width and height for proportional scaling
+        this.bricks = this.levelManager.generateLevel(levelNum, this.canvas.width, this.canvas.height);
         
-        // Create paddle - ensure it's visible on mobile by using percentage of screen height
-        const paddleOffset = Math.max(50, this.canvas.height * 0.08); // At least 50px or 8% of height
+        // Calculate scaled sizes based on screen dimensions
+        // Use the smaller dimension to ensure everything fits
+        const scaleFactor = Math.min(this.canvas.width / 400, this.canvas.height / 600);
+        
+        // Scale paddle size - base is 80x12, scale with screen but keep reasonable bounds
+        const paddleWidth = Math.max(60, Math.min(120, 80 * scaleFactor));
+        const paddleHeight = Math.max(10, Math.min(16, 12 * scaleFactor));
+        
+        // Create paddle - position at 8% from bottom
+        const paddleOffset = Math.max(50, this.canvas.height * 0.08);
         const paddleY = this.canvas.height - paddleOffset;
-        this.paddle = new Paddle(this.canvas.width / 2, paddleY);
+        this.paddle = new Paddle(this.canvas.width / 2, paddleY, paddleWidth, paddleHeight);
+        
+        // Store scale factor for ball creation
+        this.scaleFactor = scaleFactor;
         
         // Create ball on paddle
         this.balls = [];
@@ -294,11 +324,20 @@ class Game {
     }
 
     createBallOnPaddle() {
+        // Scale ball radius based on screen size
+        const ballRadius = Math.max(6, Math.min(12, 8 * (this.scaleFactor || 1)));
+        
+        // Calculate speed scale based on screen height
+        // Taller screens need faster balls to maintain same gameplay feel
+        // Base reference is 600px height
+        const speedScale = Math.max(0.8, Math.min(1.5, this.canvas.height / 600));
+        
         const ball = new Ball(
             this.paddle.position.x,
-            this.paddle.position.y - 15,
-            8,
-            this.level
+            this.paddle.position.y - ballRadius - 5,
+            ballRadius,
+            this.level,
+            speedScale
         );
         this.balls.push(ball);
         return ball;
@@ -325,12 +364,18 @@ class Game {
     }
 
     quitToMenu() {
+        // Music continues - setState will keep it playing for menu
         this.setState(GameStates.MENU);
     }
 
     async loseLife() {
         this.lives--;
         this.audio.playLifeLost();
+        this.audio.stopMusic(); // Stop all music (normal and super) when losing a life
+        
+        // Reset party mode
+        this.partyModeActive = false;
+        this.partyModeTimer = 0;
         
         // Flash screen red
         this.renderer.flashScreen('#ff0000', 0.3);
@@ -369,6 +414,13 @@ class Game {
             const isHighScore = await this.highScoreManager.isHighScore(this.scoreManager.score);
             if (isHighScore) {
                 document.getElementById('newHighScore').classList.remove('hidden');
+                // Get and display predicted rank
+                const rank = await this.highScoreManager.getPredictedRank(this.scoreManager.score);
+                const rankText = document.getElementById('highScoreRank');
+                if (rankText) {
+                    const suffix = this.getOrdinalSuffix(rank);
+                    rankText.textContent = `You ranked ${rank}${suffix}!`;
+                }
                 nameInput.focus();
             } else {
                 document.getElementById('newHighScore').classList.add('hidden');
@@ -377,12 +429,18 @@ class Game {
             console.warn('Failed to check high score status:', error);
             // Show input anyway on error
             document.getElementById('newHighScore').classList.remove('hidden');
+            document.getElementById('highScoreRank').textContent = 'You made the leaderboard!';
             nameInput.focus();
         }
     }
 
     levelComplete() {
+        this.audio.stopMusic(); // Stop all music (normal and super) when level is complete
         this.audio.playLevelComplete();
+        
+        // Reset party mode
+        this.partyModeActive = false;
+        this.partyModeTimer = 0;
         
         // Calculate bonus
         const bonus = this.scoreManager.calculateLevelScore(
@@ -399,6 +457,15 @@ class Game {
         document.getElementById('levelBonus').textContent = 'Bonus: +' + bonus.total.toLocaleString();
         
         this.updateHUD();
+    }
+
+    /**
+     * Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
+     */
+    getOrdinalSuffix(n) {
+        const s = ['th', 'st', 'nd', 'rd'];
+        const v = n % 100;
+        return s[(v - 20) % 10] || s[v] || s[0];
     }
 
     async submitHighScore() {
@@ -451,6 +518,8 @@ class Game {
             if (this.partyModeTimer <= 0) {
                 this.partyModeActive = false;
                 this.partyModeTimer = 0;
+                // Stop super music and resume normal gameplay music
+                this.audio.stopSuperMusic(true);
             }
         }
 
@@ -519,10 +588,12 @@ class Game {
         // Launch ball
         if (this.input.isLaunchPressed()) {
             // Launch unlaunched balls
+            let ballLaunched = false;
             for (const ball of this.balls) {
                 if (!ball.launched) {
                     ball.launch();
                     this.audio.playLaunch();
+                    ballLaunched = true;
                 }
             }
             
@@ -531,6 +602,12 @@ class Game {
                 this.stuckBall.launch();
                 this.audio.playLaunch();
                 this.stuckBall = null;
+                ballLaunched = true;
+            }
+            
+            // Start background music if a ball was launched and music isn't playing
+            if (ballLaunched && !this.audio.isMusicPlaying()) {
+                this.audio.startMusic();
             }
 
             // Shoot laser if available
@@ -552,12 +629,15 @@ class Game {
                 this.autoBurstTimer = 0;
                 this.autoBurstBallsRemaining--;
                 
-                // Spawn new ball from paddle
+                // Spawn new ball from paddle with scaled size and speed
+                const ballRadius = Math.max(6, Math.min(12, 8 * (this.scaleFactor || 1)));
+                const speedScale = Math.max(0.8, Math.min(1.5, this.canvas.height / 600));
                 const newBall = new Ball(
                     this.paddle.position.x + this.paddle.width / 2,
-                    this.paddle.position.y - 15,
-                    8,
-                    this.level
+                    this.paddle.position.y - ballRadius - 5,
+                    ballRadius,
+                    this.level,
+                    speedScale
                 );
                 newBall.launched = true;
                 const angle = -Math.PI/2 + (Math.random() - 0.5) * (Math.PI / 4);
@@ -922,8 +1002,13 @@ class Game {
         this.renderer.flashScreen('#ffd700', 0.5);
         this.renderer.triggerPulse(2.0);
         
-        // Play special sound
-        this.audio.playExtraLife(); // Reuse this happy sound
+        // Play special sound and start super music!
+        this.audio.playExtraLife();
+        
+        // Start the exciting star power music (like Mario Kart)
+        if (this.balls.some(b => b.launched)) {
+            this.audio.startSuperMusic();
+        }
         
         // Big particle burst from all bricks
         for (const brick of this.bricks) {
@@ -984,11 +1069,13 @@ class Game {
 
         switch (type.id) {
             case 'multiball':
-                // Spawn 2 additional balls
+                // Spawn 2 additional balls with scaled size
                 const mainBall = this.balls.find(b => b.launched) || this.balls[0];
                 if (mainBall) {
+                    const ballRadius = Math.max(6, Math.min(12, 8 * (this.scaleFactor || 1)));
+                    const speedScale = Math.max(0.8, Math.min(1.5, this.canvas.height / 600));
                     for (let i = 0; i < 2; i++) {
-                        const newBall = new Ball(mainBall.position.x, mainBall.position.y, 8, this.level);
+                        const newBall = new Ball(mainBall.position.x, mainBall.position.y, ballRadius, this.level, speedScale);
                         newBall.launched = true;
                         const angle = -Math.PI/2 + (i === 0 ? -0.5 : 0.5);
                         newBall.velocity = Vector2.fromAngle(angle, mainBall.speed);

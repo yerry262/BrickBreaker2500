@@ -9,24 +9,46 @@ class LevelManager {
         this.brickCols = 8;
         this.brickWidth = 60;
         this.brickHeight = 20;
-        this.brickPadding = 5;
+        this.brickPadding = 4;
         this.topOffset = 60;
-        this.sideOffset = 20;
+        this.sideOffset = 10;
     }
 
     /**
      * Generate bricks for the current level
+     * Now takes both width and height for proportional scaling
      */
-    generateLevel(level, canvasWidth) {
+    generateLevel(level, canvasWidth, canvasHeight) {
         this.currentLevel = level;
         const bricks = [];
         
-        // Calculate brick dimensions based on canvas width
+        // Get level pattern first to know how many rows we have
+        const pattern = this.getLevelPattern(level);
+        const numRows = pattern.length;
+        
+        // PROPORTIONAL SCALING BASED ON SCREEN SIZE
+        // The brick area should take up ~35% of screen height (from top)
+        // This ensures consistent gameplay feel across all aspect ratios
+        
+        const brickAreaHeight = canvasHeight * 0.35; // 35% of screen for bricks
+        this.topOffset = canvasHeight * 0.08; // 8% from top for score UI
+        
+        // Calculate brick height based on available vertical space
+        // Leave room for padding between rows
+        const verticalPaddingRatio = 0.15; // 15% of brick area for padding
+        const availableHeightForBricks = brickAreaHeight * (1 - verticalPaddingRatio);
+        this.brickHeight = availableHeightForBricks / numRows;
+        
+        // Cap brick height to reasonable bounds
+        this.brickHeight = Math.max(15, Math.min(40, this.brickHeight));
+        
+        // Calculate vertical padding based on brick height
+        this.brickPadding = Math.max(2, Math.min(8, this.brickHeight * 0.2));
+        
+        // Calculate brick width based on canvas width
+        this.sideOffset = Math.max(5, canvasWidth * 0.02); // 2% side margins
         const availableWidth = canvasWidth - (this.sideOffset * 2);
         this.brickWidth = (availableWidth - (this.brickPadding * (this.brickCols - 1))) / this.brickCols;
-        
-        // Get level pattern
-        const pattern = this.getLevelPattern(level);
         
         for (let row = 0; row < pattern.length; row++) {
             for (let col = 0; col < pattern[row].length; col++) {
@@ -168,6 +190,7 @@ class LevelManager {
                 [1,1,0,1,1,0,1,1],
                 [7,7,7,7,7,7,7,7],
                 [0,1,0,1,1,0,1,0],
+                [7,7,0,0,0,7,7,7],
                 [1,1,1,2,2,1,1,1]
             ],
             // Level 3: Introduce power bricks and moving bricks
@@ -176,14 +199,19 @@ class LevelManager {
                 [1,1,1,0,0,1,1,1],
                 [8,8,8,8,8,8,8,8],
                 [1,1,1,1,1,1,1,1]
+                [7,7,0,0,0,0,7,7]
+                [7,0,0,0,0,0,0,7]
             ],
             // Level 4: Introduce strong and power bricks
             4: [
-                [2,1,1,1,1,1,1,2],
-                [1,2,1,1,1,1,2,1],
+                [3,3,3,3,3,3,3,3],
+                [2,2,2,2,2,2,2,2],
                 [8,8,7,7,7,7,8,8],
-                [1,1,1,5,5,1,1,1],
-                [1,1,1,1,1,1,1,1]
+                [8,8,8,3,3,3,8,8],
+                [7,7,7,3,10,3,7,7],
+                [7,7,7,3,4,3,7,7],
+                [7,7,7,7,7,7,7,7],
+                [4,4,4,4,2,4,4,4]
             ],
             // Level 5: Diamond pattern
             5: [

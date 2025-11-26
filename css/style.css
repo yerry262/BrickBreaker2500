@@ -26,16 +26,13 @@ body {
 #game-container {
     position: relative;
     width: 100%;
+    max-width: 600px;
     height: 100vh;
     height: 100dvh; /* Dynamic viewport height for mobile */
-    max-width: 600px;
-    max-height: 900px;
     background: linear-gradient(180deg, #0f0f23 0%, #1a1a3e 100%);
-    border-radius: 0; /* Remove border radius on mobile */
+    border-radius: 0;
     box-shadow: 0 0 50px rgba(100, 149, 237, 0.3), inset 0 0 100px rgba(0, 0, 0, 0.5);
     overflow: hidden;
-    /* Ensure proper aspect ratio */
-    aspect-ratio: 3/4;
 }
 
 #gameCanvas {
@@ -139,10 +136,12 @@ body {
 }
 
 .screen h1 {
-    font-size: 2.5em;
+    font-size: clamp(1.5em, 6vw, 2.5em);
     margin-bottom: 10px;
     text-shadow: 0 0 20px rgba(100, 149, 237, 0.8);
     animation: titleGlow 2s ease-in-out infinite;
+    white-space: nowrap;
+    padding: 0 10px;
 }
 
 .screen h2 {
@@ -245,16 +244,24 @@ button {
 /* High Score Input */
 #nameInput {
     font-family: inherit;
-    font-size: 1.2em;
-    padding: 12px 20px;
-    margin: 10px;
+    font-size: 1em;
+    padding: 10px 15px;
+    margin: 0;
     border: 2px solid #4ecdc4;
     border-radius: 10px;
     background: rgba(255,255,255,0.1);
     color: white;
     text-align: center;
     text-transform: uppercase;
-    width: 200px;
+    width: 140px;
+    flex-shrink: 0;
+}
+
+#submitScore {
+    margin: 0;
+    padding: 10px 20px;
+    font-size: 0.9em;
+    flex-shrink: 0;
 }
 
 #nameInput::placeholder {
@@ -269,15 +276,30 @@ button {
 }
 
 /* High Scores List */
+#highScores {
+    text-align: center;
+}
+
+#highScores h2 {
+    font-size: clamp(1.3em, 5vw, 2em);
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
 #scoresList {
     width: 90%;
     max-width: 400px;
-    max-height: 400px;
+    max-height: 50vh;
     overflow-y: auto;
-    margin: 20px 0;
-    padding: 10px;
-    background: rgba(0,0,0,0.3);
-    border-radius: 15px;
+    margin: 15px auto;
+    padding: 15px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 100%);
+    border-radius: 20px;
+    border: 1px solid rgba(78, 205, 196, 0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), inset 0 0 30px rgba(78, 205, 196, 0.05);
 }
 
 .scores-table {
@@ -287,24 +309,47 @@ button {
 
 .scores-table th,
 .scores-table td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 8px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
 .scores-table th {
     color: #4ecdc4;
     font-weight: bold;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid rgba(78, 205, 196, 0.3);
 }
 
-.scores-table tr.rank-1 td { color: #ffd700; }
-.scores-table tr.rank-2 td { color: #c0c0c0; }
-.scores-table tr.rank-3 td { color: #cd7f32; }
+.scores-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.scores-table tbody tr:hover {
+    background: rgba(78, 205, 196, 0.1);
+}
+
+.scores-table tr.rank-1 td { 
+    color: #ffd700; 
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+.scores-table tr.rank-2 td { 
+    color: #e0e0e0; 
+    font-weight: bold;
+}
+.scores-table tr.rank-3 td { 
+    color: #cd7f32; 
+    font-weight: bold;
+}
 
 .no-scores {
     text-align: center;
     color: #888;
     padding: 40px;
+    font-style: italic;
 }
 
 /* Score Displays */
@@ -319,9 +364,34 @@ button {
     color: #4ecdc4;
 }
 
-/* New High Score Animation */
+/* New High Score Section */
+#newHighScore {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 15px 0;
+}
+
 #newHighScore h3 {
     animation: highScoreCelebrate 0.5s ease infinite;
+    margin-bottom: 5px;
+}
+
+.rank-text {
+    font-size: 1.1em;
+    color: #4ecdc4;
+    margin: 0 0 10px 0;
+    font-weight: bold;
+}
+
+.high-score-input-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: nowrap;
 }
 
 @keyframes highScoreCelebrate {
@@ -359,7 +429,7 @@ button {
     }
     
     .screen h1 {
-        font-size: 1.8em;
+        font-size: clamp(1.2em, 5.5vw, 1.8em);
     }
     
     .screen h2 {
@@ -374,6 +444,22 @@ button {
     .controls-info {
         padding: 15px;
         margin: 20px 15px;
+    }
+    
+    /* High score input row stays inline on mobile */
+    #nameInput {
+        width: 120px;
+        font-size: 0.9em;
+        padding: 8px 10px;
+    }
+    
+    #submitScore {
+        padding: 8px 15px;
+        font-size: 0.85em;
+    }
+    
+    .high-score-input-row {
+        gap: 6px;
     }
 }
 
@@ -452,13 +538,11 @@ button {
     }
     
     #game-container {
-        width: 100vw;
+        width: 100%;
         height: 100vh;
         height: 100dvh;
         max-width: none;
-        max-height: none;
         border-radius: 0;
-        aspect-ratio: unset; /* Let it fill screen on mobile */
     }
     
     /* Make UI text slightly smaller on mobile */
@@ -473,12 +557,12 @@ button {
     }
     
     .screen h1 {
-        font-size: 2.2em;
+        font-size: clamp(1.2em, 5.5vw, 2.2em);
         margin-bottom: 15px;
     }
     
     .screen h2 {
-        font-size: 1.8em;
+        font-size: clamp(1.2em, 4.5vw, 1.8em);
     }
     
     button {
@@ -500,16 +584,22 @@ button {
         padding: 12px;
         width: 200px;
     }
+    
+    /* Leaderboard mobile */
+    #scoresList {
+        max-height: 45vh;
+        padding: 10px;
+    }
+    
+    .scores-table th,
+    .scores-table td {
+        padding: 10px 5px;
+        font-size: 0.9em;
+    }
 }
 
 /* Landscape mobile optimization */
 @media screen and (max-height: 500px) and (orientation: landscape) {
-    #game-container {
-        height: 100vh;
-        height: 100dvh;
-        aspect-ratio: unset;
-    }
-    
     .screen h1 {
         font-size: 1.8em;
         margin-bottom: 10px;
@@ -534,30 +624,11 @@ button {
     }
 }
 
-/* Portrait mobile - ensure paddle is visible */
-@media screen and (max-width: 480px) and (orientation: portrait) {
-    #game-container {
-        /* Use a specific aspect ratio that leaves room for paddle */
-        height: calc(100vh - env(safe-area-inset-bottom));
-        height: calc(100dvh - env(safe-area-inset-bottom));
-    }
-}
-
-/* iPhone and similar devices with notches */
-@supports (padding: max(0px)) {
-    #game-container {
-        padding-left: env(safe-area-inset-left);
-        padding-right: env(safe-area-inset-right);
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-    }
-}
-
 /* Desktop - restore border radius */
 @media screen and (min-width: 769px) {
     #game-container {
         border-radius: 15px;
         height: 800px;
-        aspect-ratio: unset;
+        max-height: 800px;
     }
 }
