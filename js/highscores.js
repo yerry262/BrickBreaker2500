@@ -8,10 +8,11 @@ class HighScoreManager {
         this.localScores = this.loadLocalScores();
         this.isLoading = false;
         this.lastFirebaseSync = 0;
-        this.syncInterval = 300000; // Sync every 5 minutes (reduced from 30 seconds)
+        this.syncInterval = 600000; // Sync every 10 minutes (reduced API calls)
         this.cachedFirebaseScores = null;
-        this.cacheDuration = 300000; // Cache for 5 minutes
+        this.cacheDuration = 600000; // Cache for 10 minutes (reduced API calls)
         this.lastCacheTime = 0;
+        this.initialLoadComplete = false;
         
         // Migrate old scores if needed
         this.migrateOldScores();
@@ -140,6 +141,8 @@ class HighScoreManager {
             if (window.firebaseService && window.firebaseService.isAvailable()) {
                 await window.firebaseService.addScore(name, score, level);
                 console.log('✅ Score saved to Firebase');
+                // Clear cache to force refresh on next request
+                this.clearCache();
             }
         } catch (error) {
             console.warn('Failed to save to Firebase, score saved locally:', error);
@@ -154,18 +157,29 @@ class HighScoreManager {
     }
 
     /**
-     * Get the highest score
+     * Get the highest score (uses cache to reduce Firebase reads)
      */
     async getHighScore() {
-        try {
-            // Try Firebase first for most up-to-date high score
-            if (window.firebaseService && window.firebaseService.isAvailable()) {
-                const firebaseHigh = await window.firebaseService.getHighestScore();
-                const localHigh = this.localScores.length > 0 ? this.localScores[0].score : 0;
-                return Math.max(firebaseHigh, localHigh);
+        // Use cached data if available
+        if (this.cachedFirebaseScores && this.cachedFirebaseScores.length > 0) {
+            const cachedHigh = this.cachedFirebaseScores[0].score;
+            const localHigh = this.localScores.length > 0 ? this.localScores[0].score : 0;
+            return Math.max(cachedHigh, localHigh);
+        }
+
+        // Only fetch from Firebase on initial load or if cache is expired
+        const now = Date.now();
+        const cacheExpired = (now - this.lastCacheTime) > this.cacheDuration;
+        
+        if (!this.initialLoadComplete || cacheExpired) {
+            try {
+                if (window.firebaseService && window.firebaseService.isAvailable()) {
+                    const scores = await this.getTopScores(1, false); // Get top score with caching
+                    return scores.length > 0 ? scores[0].score : 0;
+                }
+            } catch (error) {
+                console.warn('Failed to get Firebase high score, using local:', error);
             }
-        } catch (error) {
-            console.warn('Failed to get Firebase high score, using local:', error);
         }
 
         // Fallback to local
@@ -193,6 +207,7 @@ class HighScoreManager {
                 // Cache the results
                 this.cachedFirebaseScores = firebaseScores;
                 this.lastCacheTime = now;
+                this.initialLoadComplete = true;
                 
                 // Merge with local scores (in case some local scores are higher than Firebase)
                 const allScores = [...firebaseScores, ...this.localScores];
@@ -320,8 +335,10 @@ class HighScoreManager {
 
     /**
      * Force refresh scores from Firebase (clears cache)
+     * Only called when explicitly needed (leaderboard view, after score submission)
      */
     async refreshScores() {
+        console.log('🔄 Force refreshing scores from Firebase...');
         this.cachedFirebaseScores = null;
         this.lastCacheTime = 0;
         return await this.getTopScores(100, true);

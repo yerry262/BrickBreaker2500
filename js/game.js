@@ -73,7 +73,9 @@ class Game {
 
         // Setup
         this.setupUI();
-        this.updateHighScoreDisplay(); // Don't await to avoid blocking constructor
+        
+        // Initial high score load (non-blocking)
+        this.initialLoadHighScores();
 
         // Start menu animations
         if (window.menuAnimations) {
@@ -239,9 +241,8 @@ class Game {
     setState(newState) {
         this.state = newState;
         
-        // Refresh scores when entering main menu (but don't wait for it)
+        // Start menu animations when entering menu (no automatic score refresh)
         if (newState === GameStates.MENU) {
-            this.refreshHighScores();
             // Start menu animations
             if (window.menuAnimations) {
                 window.menuAnimations.restart();
@@ -308,22 +309,26 @@ class Game {
     }
 
     /**
-     * Refresh high scores from Firebase (non-blocking)
+     * Initial load of high scores from Firebase (only called once)
      */
-    refreshHighScores() {
-        // Fire and forget - don't await to avoid blocking UI
-        this.highScoreManager.refreshScores().then(() => {
-            // Update the high score display after refresh
-            this.updateHighScoreDisplay();
-        }).catch(error => {
-            console.warn('Failed to refresh scores:', error);
-        });
+    async initialLoadHighScores() {
+        // Only load if not already loaded
+        if (!this.highScoreManager.initialLoadComplete) {
+            console.log('📋 Initial high score load...');
+            try {
+                await this.highScoreManager.getTopScores(1, false); // Load top score with caching
+                this.updateHighScoreDisplay();
+            } catch (error) {
+                console.warn('Failed initial score load:', error);
+            }
+        }
     }
 
     showHighScores() {
         this.setState(GameStates.HIGH_SCORES);
-        // Force refresh when viewing leaderboard
+        // Force refresh when viewing leaderboard (one of the 3 allowed refresh points)
         setTimeout(() => {
+            console.log('🏆 Opening leaderboard - refreshing scores...');
             this.highScoreManager.displayScores('scoresList', true);
         }, 100);
     }
@@ -341,8 +346,8 @@ class Game {
         this.levelManager.reset();
         this.powerUpManager.clear();
         
-        // Refresh high score at game start
-        this.refreshHighScores();
+        // No need to refresh high scores when starting game - use cached data
+        // this.refreshHighScores(); // REMOVED - reduces Firebase API calls
         
         this.loadLevel(this.level);
         this.setState(GameStates.PLAYING);
@@ -554,6 +559,9 @@ class Game {
         
         try {
             await this.highScoreManager.addScore(name, this.scoreManager.score, this.level);
+            
+            // After score submission - refresh scores (one of the 3 allowed refresh points)
+            console.log('🎯 New high score submitted - refreshing leaderboard...');
             await this.updateHighScoreDisplay();
             
             // Success state
