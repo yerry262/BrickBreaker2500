@@ -1,5 +1,5 @@
 ﻿/**
- * Game States
+ * Game States - Updated 11/25/2025
  */
 const GameStates = {
     MENU: 'menu',
