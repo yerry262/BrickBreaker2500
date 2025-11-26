@@ -1,13 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="Bubble Bounce Blitz - A fun, fast-paced 2D browser game where you tap to launch bouncing bubbles upward through moving platforms!">
-    <meta name="theme-color" content="#2c3e50">
+    <meta name="description" content="BrickBreaker2500 - A fun brick breaker game where you launch balls to destroy bricks!">
+    <meta name="theme-color" content="#1a1a2e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Bubble Bounce Blitz 🫧</title>
+    <title>BrickBreaker2500</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,68 +16,66 @@
         <div id="ui">
             <div id="score">Score: 0</div>
             <div id="highScore">High: 0</div>
-            <div id="difficulty" class="difficulty-badge"></div>
+            <div id="level">Level: 1</div>
+            <div id="lives">Lives: 3</div>
         </div>
+        <div id="powerup-display"></div>
         <div id="menu" class="screen">
-            <h1>🫧 Bubble Bounce Blitz 🫧</h1>
-            <p>Tap to Jump! Reach new heights!</p>
-            <div class="platform-legend">
-                <span class="legend-item"><span class="color-dot normal"></span> Normal</span>
-                <span class="legend-item"><span class="color-dot breaking"></span> Breaking</span>
-                <span class="legend-item"><span class="color-dot boost"></span> Boost</span>
-                <span class="legend-item"><span class="color-dot reverse"></span> Reverse</span>
-                <span class="legend-item"><span class="color-dot rainbow"></span> Split!</span>
+            <h1>🧱 BrickBreaker2500 🧱</h1>
+            <p class="subtitle">Break all the bricks!</p>
+            <button id="startBtn" class="btn-primary">Start Game</button>
+            <button id="scoresBtn" class="btn-secondary">High Scores</button>
+            <div class="controls-info">
+                <h3>Controls</h3>
+                <p>  Arrow Keys or Tap Left/Right</p>
+                <p>Space or Tap to Launch Ball</p>
             </div>
-            <button id="startBtn">🎮 Start Game</button>
-            <button id="scoresBtn">🏆 High Scores</button>
+        </div>
+        <div id="paused" class="screen hidden">
+            <h2> Paused</h2>
+            <button id="resumeBtn" class="btn-primary">Resume</button>
+            <button id="quitBtn" class="btn-secondary">Quit to Menu</button>
+        </div>
+        <div id="levelComplete" class="screen hidden">
+            <h2> Level Complete! </h2>
+            <p id="levelScore">Score: 0</p>
+            <p id="levelBonus">Bonus: 0</p>
+            <button id="nextLevelBtn" class="btn-primary">Next Level</button>
         </div>
         <div id="gameOver" class="screen hidden">
-            <h2>Game Over!</h2>
+            <h2> Game Over </h2>
             <p id="finalScore">Score: 0</p>
+            <p id="finalLevel">Level Reached: 1</p>
             <div id="newHighScore" class="hidden">
-                <h3>🎉 New High Score! 🎉</h3>
-                <input type="text" id="nameInput" maxlength="8" placeholder="Name (8 letters)">
-                <button id="submitScore">Submit</button>
+                <h3> New High Score! </h3>
+                <input type="text" id="nameInput" maxlength="8" placeholder="Your Name">
+                <button id="submitScore" class="btn-primary" disabled>Submit</button>
             </div>
-            <button id="playAgain">🔄 Play Again</button>
-            <button id="mainMenu">🏠 Main Menu</button>
+            <button id="playAgain" class="btn-primary">Play Again</button>
+            <button id="leaderboardBtn" class="btn-secondary">Leaderboards</button>
+            <button id="mainMenu" class="btn-secondary">Main Menu</button>
         </div>
         <div id="highScores" class="screen hidden">
-            <h2>🏆 Top 100 High Scores</h2>
+            <h2> Top 100 High Scores </h2>
             <div id="scoresList"></div>
-            <button id="backBtn">← Back</button>
+            <button id="backBtn" class="btn-secondary">Back</button>
         </div>
     </div>
     
-    <!-- Utility Scripts -->
+    <!-- Load scripts in order -->
     <script src="js/utils/Vector2.js"></script>
     <script src="js/utils/ObjectPool.js"></script>
-    
-    <!-- Core Scripts -->
-    <script src="js/core/EventBus.js"></script>
-    <script src="js/core/ConfigManager.js"></script>
-    <script src="js/core/EntityManager.js"></script>
-    <script src="js/core/DifficultyManager.js"></script>
-    <script src="js/core/TouchManager.js"></script>
-    <script src="js/core/PerformanceManager.js"></script>
-    
-    <!-- Entity Scripts -->
-    <script src="js/entities/Bubble.js"></script>
-    <script src="js/entities/Platform.js"></script>
-    <script src="js/entities/Particle.js"></script>
-    
-    <!-- System Scripts -->
-    <script src="js/systems/PhysicsSystem.js"></script>
-    <script src="js/systems/CollisionSystem.js"></script>
-    <script src="js/systems/RenderSystem.js"></script>
-    <script src="js/systems/AudioSystem.js"></script>
-    <script src="js/systems/ParticleSystem.js"></script>
-    
-    <!-- Legacy/Existing Scripts -->
+    <script src="js/entities/Ball.js"></script>
+    <script src="js/entities/Paddle.js"></script>
+    <script src="js/entities/Brick.js"></script>
+    <script src="js/systems/LevelManager.js"></script>
+    <script src="js/systems/PowerUpManager.js"></script>
+    <script src="js/systems/ScoreManager.js"></script>
     <script src="js/highscores.js"></script>
+    <script src="js/physics.js"></script>
     <script src="js/input.js"></script>
-    
-    <!-- Main Game -->
+    <script src="js/renderer.js"></script>
+    <script src="js/audio.js"></script>
     <script src="js/game.js"></script>
 </body>
 </html>
