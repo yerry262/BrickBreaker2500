@@ -100,11 +100,17 @@ class Ball {
     }
 
     bounceOffPaddle(paddle) {
-        // Calculate where the ball hit the paddle (0 = left edge, 1 = right edge)
-        const hitPoint = (this.position.x - paddle.position.x) / paddle.width;
-        
-        // Convert to angle: -60 degrees (left) to -120 degrees (right)
-        // This gives us angles that go up and to the sides
+        // paddle.position.x is the paddle CENTER, so measure the hit point
+        // relative to the left edge to get a value in [0, 1]
+        // (0 = left edge, 0.5 = center, 1 = right edge).
+        const paddleLeft = paddle.position.x - paddle.width / 2;
+        const rawHitPoint = (this.position.x - paddleLeft) / paddle.width;
+        const hitPoint = Math.max(0, Math.min(1, rawHitPoint));
+
+        // Convert to angle, symmetric around straight up (-90 degrees):
+        // left edge  -> -120 degrees (up and to the left)
+        // center     ->  -90 degrees (straight up)
+        // right edge ->  -60 degrees (up and to the right)
         const angle = -Math.PI / 2 + (hitPoint - 0.5) * (Math.PI / 3);
         
         // Set velocity based on angle

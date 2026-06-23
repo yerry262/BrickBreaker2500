@@ -217,9 +217,24 @@ class Game {
         this.scoreManager.reset();
         this.levelManager.reset();
         this.powerUpManager.clear();
-        
+        this.resetSpecialPowerUpStates();
+
         this.loadLevel(this.level);
         this.setState(GameStates.PLAYING);
+    }
+
+    /**
+     * Reset transient power-up states that live on the Game object so they
+     * never leak across lives, levels, or a fresh game.
+     */
+    resetSpecialPowerUpStates() {
+        this.autoBurstActive = false;
+        this.autoBurstBallsRemaining = 0;
+        this.autoBurstTimer = 0;
+        this.nextBrickExplodes = false;
+        this.partyModeActive = false;
+        this.partyModeTimer = 0;
+        this.partyModeHue = 0;
     }
 
     loadLevel(levelNum) {
@@ -242,6 +257,7 @@ class Game {
         this.stuckBall = null;
         this.particleSystem.clear();
         this.powerUpManager.clear();
+        this.resetSpecialPowerUpStates();
         this.scoreManager.resetCombo();
         
         this.updateHUD();
@@ -297,6 +313,7 @@ class Game {
             this.createBallOnPaddle();
             this.stuckBall = null;
             this.powerUpManager.clearEffects();
+            this.resetSpecialPowerUpStates();
             this.paddle.reset(this.canvas.width / 2, this.paddle.position.y);
         }
         
@@ -488,9 +505,9 @@ class Game {
                 this.autoBurstTimer = 0;
                 this.autoBurstBallsRemaining--;
                 
-                // Spawn new ball from paddle
+                // Spawn new ball from the paddle center (position.x is the center)
                 const newBall = new Ball(
-                    this.paddle.position.x + this.paddle.width / 2,
+                    this.paddle.position.x,
                     this.paddle.position.y - 15,
                     8,
                     this.level
@@ -748,9 +765,14 @@ class Game {
                     { color: neighbor.color, minSpeed: 2, maxSpeed: 5 }
                 );
 
-                // Chain explosions!
+                // Chain explosions! Guard the deferred call so it never runs
+                // on a brick from an old level or while we're not playing.
                 if (result.explosive) {
-                    setTimeout(() => this.handleExplosion(neighbor), 100);
+                    setTimeout(() => {
+                        if (this.state === GameStates.PLAYING && this.bricks.includes(neighbor)) {
+                            this.handleExplosion(neighbor);
+                        }
+                    }, 100);
                 }
             }
         }
@@ -884,13 +906,18 @@ class Game {
             laser.y -= laser.speed;
 
             // Check brick collisions
+            let hitBrick = false;
             for (const brick of this.bricks) {
                 if (this.physics.checkLaserBrickCollision(laser, brick)) {
                     this.lasers.splice(i, 1);
                     this.handleBrickHit({ position: { x: laser.x, y: laser.y }, isMega: false }, brick);
+                    hitBrick = true;
                     break;
                 }
             }
+            // Already removed this laser; don't fall through and splice index i
+            // again (which would drop a different, still-active laser).
+            if (hitBrick) continue;
 
             // Remove if off screen
             if (laser.y < 0) {
@@ -900,9 +927,9 @@ class Game {
     }
 
     updatePowerUps(dt) {
-        const result = this.powerUpManager.update(dt, this.paddle, this.canvas.height);
-        
-        if (result) {
+        const events = this.powerUpManager.update(dt, this.paddle, this.canvas.height);
+
+        for (const result of events) {
             if (result.collected) {
                 this.applyPowerUp(result.type);
             } else if (result.expired) {
@@ -916,6 +943,10 @@ class Game {
 
     applyPowerUp(type) {
         this.audio.playPowerUp();
+        // Capture whether this effect was already running BEFORE we (re)activate
+        // it, so stackable width changes are only applied once per active window
+        // (otherwise the paddle keeps growing/shrinking but only reverts once).
+        const wasActive = this.powerUpManager.isActive(type.id);
         this.powerUpManager.activate(type);
 
         switch (type.id) {
@@ -934,12 +965,12 @@ class Game {
                 break;
 
             case 'extend':
-                this.paddle.extend(30);
+                if (!wasActive) this.paddle.extend(30);
                 break;
 
             case 'shrink':
                 this.audio.playPowerDown();
-                this.paddle.shrink(30);
+                if (!wasActive) this.paddle.shrink(30);
                 break;
 
             case 'sticky':
