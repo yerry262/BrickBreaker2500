@@ -19,6 +19,9 @@ class Renderer {
         
         // Reactive pulse (triggered by events)
         this.pulseIntensity = 0;
+
+        // Full-screen flash (triggered by events, painted during render)
+        this.flash = { color: '#ffffff', alpha: 0 };
     }
 
     generateStars(count) {
@@ -259,6 +262,25 @@ class Renderer {
         if (scoreManager) {
             scoreManager.drawPopups(this.ctx);
         }
+
+        // Paint and decay any active full-screen flash (last, so it overlays).
+        this.drawFlash();
+    }
+
+    /**
+     * Paint the current flash overlay and decay it for the next frame.
+     */
+    drawFlash() {
+        if (this.flash.alpha <= 0.01) {
+            this.flash.alpha = 0;
+            return;
+        }
+        this.ctx.save();
+        this.ctx.fillStyle = this.flash.color;
+        this.ctx.globalAlpha = this.flash.alpha;
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        this.ctx.restore();
+        this.flash.alpha *= 0.88;
     }
 
     /**
@@ -514,13 +536,15 @@ class Renderer {
     }
 
     /**
-     * Flash screen effect
+     * Trigger a full-screen flash. The flash is stored and painted during the
+     * next render() (and decays over subsequent frames). Painting it here
+     * directly would be wiped by the clear() at the start of render().
      */
     flashScreen(color = 'white', alpha = 0.3) {
-        this.ctx.save();
-        this.ctx.fillStyle = color;
-        this.ctx.globalAlpha = alpha;
-        this.ctx.fillRect(0, 0, this.width, this.height);
-        this.ctx.restore();
+        // Keep the strongest pending flash if several fire in one frame.
+        if (alpha >= this.flash.alpha) {
+            this.flash.color = color;
+            this.flash.alpha = alpha;
+        }
     }
 }

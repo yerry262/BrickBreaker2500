@@ -244,6 +244,10 @@ class PowerUpManager {
      * Update all power-ups and active effects
      */
     update(dt, paddle, canvasHeight) {
+        // Collect every event this frame; returning early on the first one
+        // would freeze effect timers and drop simultaneous pickups/expiries.
+        const events = [];
+
         // Update falling power-ups
         for (let i = this.powerUps.length - 1; i >= 0; i--) {
             const powerUp = this.powerUps[i];
@@ -252,7 +256,8 @@ class PowerUpManager {
             // Check collection
             if (powerUp.checkCollision(paddle)) {
                 this.powerUps.splice(i, 1);
-                return { collected: true, type: powerUp.type };
+                events.push({ collected: true, type: powerUp.type });
+                continue;
             }
 
             // Remove if off screen
@@ -266,11 +271,11 @@ class PowerUpManager {
             this.activeEffects[i].remaining -= dt;
             if (this.activeEffects[i].remaining <= 0) {
                 const expired = this.activeEffects.splice(i, 1)[0];
-                return { expired: true, type: expired.type };
+                events.push({ expired: true, type: expired.type });
             }
         }
 
-        return null;
+        return events;
     }
 
     /**
