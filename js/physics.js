@@ -109,21 +109,4 @@ class Physics {
 
         return neighbors;
     }
-
-    /**
-     * Calculate reflection angle based on paddle hit position
-     */
-    calculateBounceAngle(ball, paddle) {
-        // Calculate where on the paddle the ball hit (0 to 1)
-        const paddleLeft = paddle.position.x - paddle.width / 2;
-        const hitPosition = (ball.position.x - paddleLeft) / paddle.width;
-        
-        // Map to angle range: -60 to -120 degrees (in radians)
-        // hitPosition 0 (left edge) = -150 degrees
-        // hitPosition 1 (right edge) = -30 degrees
-        const minAngle = -Math.PI * 5/6; // -150 degrees
-        const maxAngle = -Math.PI / 6;   // -30 degrees
-        
-        return minAngle + hitPosition * (maxAngle - minAngle);
-    }
 }
