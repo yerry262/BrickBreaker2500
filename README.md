@@ -52,10 +52,9 @@ Simply open `index.html` in a modern web browser to play!
 ##  Scoring System
 
 - **Base Points**: Each brick has base point value
-- **Combo System**: Hit multiple bricks without paddle contact for multipliers
-  - 5+ hits: 1.5x multiplier
-  - 10+ hits: 2x multiplier
-  - 15+ hits: 3x multiplier (MAX)
+- **Combo System**: Hit multiple bricks without paddle contact to build a multiplier
+  - +0.1x per consecutive brick hit (e.g. 1.4x at 5 hits, 1.9x at 10 hits)
+  - Caps at 3x maximum (reached after 21 consecutive hits)
 - **Level Bonus**: Remaining lives  500 points per level cleared
 - **Power-Up Bonus**: 2X Score power-up doubles all points
 
